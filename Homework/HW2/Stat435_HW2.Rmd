@@ -1,0 +1,534 @@
+---
+title: "Stat435_HW2"
+author: "Su Huang"
+date: "4/20/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR2)
+library(tidyverse)
+library(MASS)
+```
+
+### Problem 1
+
+```{r}
+head(Auto)
+```
+
+#### a).Fit a least squares linear model to the data, in order to predict mpg using all of the other predictors except for name. Present your results in the form of a table. Be sure to indicate clearly how any qualitative variables should be interpreted.
+
+```{r}
+m <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + factor(origin), data = Auto)
+data.frame(m$coefficients)
+```
+  
+  When cylinder increases by a unit, the mpg decreases by 0.489709424	.
+  When displacement increases by a unit, the mpg increases by 0.023978644.
+  When horsepower increases by a unit, the mpg decreases by 0.018183464.
+  When weight increases by a unit, the mpg decreases by 0.006710384.
+  When acceleration increases by a unit, the mpg increases by 0.079103036.
+  When year increases by a unit, the mpg increases by 0.777026939.
+  When origin is 2, the mpg increases by 2.63000236.
+  When origin is 3, the mpg increases by 2.853228228.
+  
+#### b). What is the (training set) mean squared error of this model?
+
+```{r}
+mean(summary(m)$residuals^2)
+```
+
+  The MSE is 10.68212.
+
+#### c). What gas mileage do you predict for a Japanese car with three cylinders, displacement 100, horsepower of 85, weight of 3000, acceleration of 20, built in the year 1980?
+
+```{r}
+-17.954602067	- 0.489709424*3 + 0.023978644*100 - 0.018183464*85 - 0.006710384*3000	+ 0.079103036*20 + 0.777026939*80 + 2.853228228
+```
+
+The predict mpg is 27.89483
+
+#### d). On average, holding all other covariates fixed, what is the difference between the mpg of a Japanese car and the mpg of an American car?
+
+  The different is 2.8523. A Japanese car has 2.8523 higher mpg than an American car.
+  
+#### e). On average, holding all other covariates fixed, what is the change in mpg associated with a 10-unit change in horsepower?
+
+```{r}
+-0.018183464 * 10
+```
+
+  The mpg will decreases by 0.1818 if the horsepower increases by 10 units.
+  On the contrary, it will increase by 0.1818 if the horsepower decreases by 10 units.
+  
+### Problem 2
+
+#### a). First, code the origin variable using two dummy (indicator) variables, with Japanese as the default value. Write out an equation like (3.30) in the textbook, and report the coefficient estimates. What is the predicted mpg for a Japanese car? for an American car? for a European car?
+
+```{r}
+Auto2a <- Auto %>%
+  mutate(Japanese = ifelse(Auto$origin == 3, 0, 0),
+         American = ifelse(Auto$origin == 1, 1, 0),
+         European = ifelse(Auto$origin == 2, 1, 0))
+m2 <- lm(mpg ~ American + European, data=Auto2a)
+m2$coefficients
+```
+$$
+\begin{align*}
+y_i = \beta_0 + \beta_1x_{i1} + \beta_2x_{i2} + \epsilon_i =
+\left\{
+    \begin{array}{ll}
+        \beta_0 + \beta_1 + \epsilon_i &\text {if the ith car orgins from America}\\
+        \beta_0 + \beta_2 + \epsilon_i &\text {if the ith car orgins from Europe}\\
+        \beta_0 + \epsilon_i &\text {if the ith car orgins from Japan}
+    \end{array}
+\right.
+\end{align*}
+$$
+  The coefficient for American is -10.4172, for European is -2.8477. 
+  The prediction mpg for Japanese is 30.4506, for American is 20.0334, for European is 27.6029.
+  
+#### b). Now, code the origin variable using two dummy (indicator) variables, with American as the default. Write out an equation like (3.30) in the textbook, and report the coefficient estimates. What is the predicted mpg for a Japanese car? for an American car? for a European car?
+
+
+```{r}
+Auto2b <- Auto %>%
+  mutate(Japanese = ifelse(Auto$origin == 3, 1, 0),
+         American = ifelse(Auto$origin == 1, 0, 0),
+         European = ifelse(Auto$origin == 2, 1, 0))
+m3 <- lm(mpg ~ Japanese + European, data=Auto2b)
+m3$coefficients
+```
+
+
+$$
+\begin{align*}
+y_i = \beta_0 + \beta_1x_{i1} + \beta_2x_{i2} + \epsilon_i =
+\left\{
+    \begin{array}{ll}
+        \beta_0 + \beta_1 + \epsilon_i &\text {if the ith car orgins from Japan}\\
+        \beta_0 + \beta_2 + \epsilon_i &\text {if the ith car orgins from Europe}\\
+        \beta_0 + \epsilon_i &\text {if the ith car orgins from American}
+    \end{array}
+\right.
+\end{align*}
+$$
+
+  The coefficient for Japanese is 10.4172, for European is 7.569472. 
+  The prediction mpg for Japanese is 30.4506, for American is 20.0334, for European is 27.6029.
+  
+#### c). Now, code the origin variable using two variables that take on values of +1 or −1. Write out an equation like (3.30) in the textbook, and report the coefficient estimates. What is the predicted mpg for a Japanese car? for an American car? for a European car?
+
+```{r}
+Auto2c <- Auto %>%
+  mutate(
+         American = ifelse(Auto$origin == 1, 1, -1),
+         European = ifelse(Auto$origin == 2, 1, -1))
+m4 <- lm(mpg ~ American + European, data=Auto2c)
+m4$coefficients
+
+```
+
+$$
+\begin{align*}
+y_i = \beta_0 + \beta_1x_{i1} +  \beta_2x_{i2} + \epsilon_i =
+\left\{
+    \begin{array}{ll}
+        \beta_0 + \beta_1 + \beta_2 +  \epsilon_i &\text {if the ith car orgins from America}\\
+        \beta_0 - \beta_1 - \beta_2 +  \epsilon_i &\text {if the ith car orgins from Japan} \\
+        \beta_0 - \beta_1 + \beta_2 +  \epsilon_i &\text {if the ith car orgins from Europe}
+        
+    \end{array}
+\right. \\
+
+\end{align*}
+$$
+  
+  The coefficient for American is -5.208582 , for European is -1.423846. 
+  The intercept is 23.818205.
+  The prediction mpg for American is 20.0334, for European is 27.6029, for Japanese is 30.4506.
+
+#### d).  Finally, code the origin variable using a single variable that takes on values of 0 for Japanese, 1 for American, and 2 for European. Write out an equation like (3.30) in the textbook, and report the coefficient estimates.  What is the predicted mpg for a Japanese car? for an American car? for a European car?
+
+```{r}
+Auto2d <- Auto
+Auto2d["origin"][Auto2d['origin'] == 3] <- 0
+m7 <- lm(mpg ~ origin, data=Auto2d)
+m7$coefficients
+```
+ 
+$$
+\begin{align*}
+y_i = \beta_0 + \beta_1x_{i1}+ \epsilon_i =
+\left\{
+    \begin{array}{ll}
+        \beta_0 + \beta_1 + \epsilon_i &\text {if the ith car orgins from America}\\
+        \beta_0 + 2\beta_1 + \epsilon_i &\text {if the ith car orgins from Europe}\\
+        \beta_0 + \epsilon_i &\text {if the ith car orgins from Japan}
+    \end{array}
+\right.
+\end{align*}
+$$
+ 
+  The prediction mpg for Japanese is 25.239473 , for American is 23.394, for European is 21.549. 
+  When origin increases by 1 unit, the mpg decreases by 1.8453.
+  
+
+#### e).Comment on your results in (a)-(d).
+
+We got the same prediction for Japanese, American and European for a, b, and c part. The coefficient are different because we have different default variables. The result for d is different with others which I believe the reason is the dummy variable only take two indicators instead of three. 
+
+### Problem 3.
+
+#### Fit a model to predict mpg on the Auto dataset using origin and horsepower, as well as an interaction between origin and horsepower. Present your results, and write out an equation like (3.35) in the textbook. On average, how much does the mpg of a Japanese car change with a one-unit increase in horsepower? How about the mpg of an American car? a European car?
+
+```{r}
+Auto3 <- Auto %>% 
+  mutate(from = recode_factor(origin, '1' = "American", '2' = "European", '3' = "Japanese")) 
+m8 <- lm(mpg ~  horsepower + from + from*horsepower, data=Auto3)
+summary(m8)
+```
+$$
+\begin{align*}
+y_i =  \left\{
+                \begin{array}{ll}
+                   \beta_0 + \beta_2 + (\beta_1 + \beta_3) * horsepower &\text {if the ith car orgins from Japan/America/Europe} \\
+                   \beta_0 + \beta_1 * horsepower &\text {if the ith car doesnt orgin from Japan/America/Europe}\\
+                \end{array}
+              \right.
+\end{align*}
+$$
+  
+  When horsepower increases by 1 unit, the mpg for Japanese car decreases by 0.108723.
+  When horsepower increases by 1 unit, the mpg for American car decreases by 0.12132.
+  When horsepower increases by 1 unit, the mpg for European car decreases by 0.100515.
+
+#### Problem 4.
+
+#### a). Suppose that you measure height in inches (X1), fit the model Y = β_0 + β_1X_1 + e and obtain the coefficient estimates ˆβ0=-165.1 and ˆβ1=4.8. What weight will you predict for an individual who is 64 inches tall?
+
+```{r}
+-165.1 + 4.8*64
+```
+
+  I predict his weight is 142.1 + error.
+  
+#### b). Now suppose that you want to measure height in feet (X2) instead of inches. (There are 12 inches to a foot.) You fit the model Y = β∗0 + β∗1X2 + e. What are the coefficient estimates? What weight will you predict for an individual who is 64 inches tall (i.e. 5.333 feet)?
+
+```{r}
+4.8*12
+-165.1 + (4.8*12) * 64/12
+```
+
+$$\beta_0=-165.1, \beta_1=57.6$$
+I will predict his weight is 142.1 + error.
+
+
+#### c). Now suppose you fit the model Y = β0 + β1X1 + β2X2 +e,which contains both height in inches and height in feet as predictors. Provide a general expression for the least squares coefficient estimates for this model.
+
+$$
+Y = \beta_0 + \beta_1X_1 +\beta_2X_2 +\epsilon \\
+Y = \beta_0 + \beta_1X_1 +\frac{1}{12}\beta_1X_1 + \epsilon \\
+\beta_0=-165.1, \beta_1 +\frac{1}{12}\beta_1= 4.8
+$$
+
+#### d). How do the (training set) mean squared errors compare for three models fit in (a)–(c)?
+
+$$
+MSE = \frac{1}{n}\sum_{i=1}^{n}(Y-\hat{Y})^2 \\ 
+$$
+For a), b), we have the similar regression which will return the same MSE if we have the same data set Y.
+For c), since we still have the same β as a) so that it will also give the same MSE.
+
+### Problem 5. 
+#### Suppose we wish to perform classification of a binary response in a setting with p = 1: that is, X ∈ R, and Y ∈ {1,2}. We assume that the observations in Class 1 are drawn from a N(μ,σ2) distribution, and that the observations in Class 2 are drawn from an Uniform[−2,2] distribution.
+
+#### a). Derive an expression for the Bayes decision boundary: that is, for the set of x such that P(Y = 1 | X = x) = P(Y = 2 | X = x). Write it out as simply as you can.
+
+$$
+P(Y = 1|X=x) = \frac{f_1(x)\pi_1}{\sum_{l=1}^{2}f_l(x)\pi_l} = \frac{\frac{e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}}{\sigma\sqrt{2\pi}}\pi_1}{\sum_{l=1}^{2}f_l(x)\pi_l} \\
+P(Y = 2|X=x) = \frac{f_2(x)\pi_2}{\sum_{l=1}^{2}f_l(x)\pi_l} = \frac{\frac{1}{4}\pi_2}{\sum_{l=1}^{2}f_l(x)\pi_l}\\
+P(Y = 1 | X = x) = P(Y = 2 | X = x) \\ 
+\frac{\frac{e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}}{\sigma\sqrt{2\pi}}\pi_1}{\sum_{l=1}^{2}f_l(x)\pi_l} = \frac{\frac{1}{4}\pi_2}{\sum_{l=1}^{2}f_l(x)\pi_l} \\
+\frac{e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}}{\sigma\sqrt{2\pi}}\pi_1 = \frac{1}{4}\pi_2
+$$
+
+
+#### b). Suppose (for this sub-problem only) that μ = 0, σ = 1, π1 = 0.45 (here, π1 is the prior probability that an observation belongs to Class 1). Describe the Bayes classifier in this case: what range of x values will get assigned to Class 1, and what range of x values will get assigned to Class 2? Write out your answer as simply as you can. Draw a picture showing the set of x values assigned to Class 1 and the set of x values assigned to Class 2.
+
+$$
+P(Y = 1 | X = x) >= P(Y = 2 | X = x) \\
+\frac{e^{-\frac{1}{2}(\frac{x-0}{1})^2}}{1\sqrt{2\pi}}*0.45 >= \frac{1}{4}*0.55 \\
+|x| <= 0.7303
+
+$$
+  When abs value of x is smaller than 0.7303, it get assigned to class 1. When abs value of x is larger than 0.7307, it    get assigned to class 2. Also since the domain for unif is -2, 2, when abs(x) value is greater than 2, it will get       assigned to class 1 as well.
+  
+```{r}
+x <- seq(-4, 4, by = 0.01)
+plot(x = x, y = dnorm(x, 0, 1), type = "l") 
+lines(x = x, y = dunif(x, -2, 2))
+abline(v = 0.7303)
+abline(v = -0.7303)
+rect(xleft = -2, ybottom = -1, xright = -0.7303, ytop = 0.5, angle = 0, density = 10, col = "green")
+rect(xleft = -0.7303, ybottom = -1, xright = 0.7303, ytop = 0.5, angle = 0, density = 10, col = "grey")
+rect(xleft = 0.7303, ybottom = -1, xright = 2, ytop = 0.5, angle = 0, density = 10, col = "green")
+rect(xleft = -5, ybottom = -1, xright = -2, ytop = 0.5, angle = 0, density = 10, col = "grey")
+rect(xleft =2, ybottom = -1, xright = 5, ytop = 0.5, angle = 0, density = 10, col = "grey")
+legend('topleft', legend=c("Class 1", "Class 2"),
+       col=c("grey", "green"), lty =1:1)
+```
+  The areas with grey line assign to class 1 and the areas with green line assign to class2.
+
+#### c).  Now suppose we observe n training observations (x1,y1),...,(xn,yn). Explain how you could use these observations to estimate μ, σ, and π1 (instead of using the values that were given in part (b)).
+
+$$
+\mu_n = \frac{1}{n_1}\sum_{i:y_i=1}x_i \\
+\sigma = \sqrt{\frac{1}{n-1}\sum_{k=1}^{1}\sum_{i:y_i=1}(x_i-\mu_k)^2} \\
+\pi_1 = \frac{n_1}{n_1 + n_2}
+$$
+
+
+#### d). Given a test observation X = x0, provide an estimate of P(Y = 1 |X = x0). Your answer should involve only the training observations (x1,y1),...,(xn,yn) and the test observation x0, and no unknown parameters.
+
+$$
+P(Y = 1|X=x) = \frac{f_1(x)\pi_1}{\sum_{l=1}^{2}f_l(x)\pi_l} = \frac{\frac{e^{-\frac{1}{2}(\frac{x_0-\hat{\mu}}{\hat{\sigma}})^2}}{\hat{\sigma}\sqrt{2\pi}}\pi_1}{\frac{e^{-\frac{1}{2}(\frac{x_0-\hat{\mu}}{\hat{\sigma}})^2}}{\hat{\sigma}\sqrt{2\pi}}\pi_1 + \frac{1}{4}\pi_2} 
+$$
+
+### Problem 6. 
+
+#### a). Suppose you fit a logistic regression to some data and find that for a given observation x = (x1,...,xp)T , the estimated log-odds equals 0.7. What is P(Y = 1 |X = x)?
+
+$$ 
+  p(x) = Pr(Y = 1 | X = x) = \frac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}} \\
+  log(\frac{p(x)}{1-p(x)}) = \beta_0+\beta_1X = 0.7 \\
+  p(x) = Pr(Y = 1 | X = x) = \frac{e^{0.7}}{1+e^{0.7}} = 0.6682
+  
+$$
+
+#### b). In the same setting as (a), suppose you are now interested in the observation x∗= (x1 + 1,x2 −1,x3 + 2,x4,...,xp)T . In other words, x∗1 = x1 + 1, x∗2 = x2 −1, x∗3 = x3 + 2, and x∗j = xj for j = 4,...,p. Write out a simple expression for P(Y = 1 |X = x∗). Your answer will involve the estimated coefficients in the logistic regression model, as well as the number 0.7.
+
+$$
+\begin{align*}
+p(Y=1|X=x^*) &= \frac{exp(\beta_0 + \beta_1x_1^* + \beta_2x_2^* + \beta_3x_3^* + ...+ \beta_px_p^*)}{1 + exp(\beta_0 + \beta_1x_1^* + \beta_2x_2^* + \beta_3x_3^* + ...+ \beta_px_p^*)}  \\ 
+\\ 
+exp(\beta_0 + \beta_1x_1^* + \beta_2x_2^* + \beta_3x_3^* + ...+ \beta_px_p^*) &= exp(\beta_0 + \beta_1(x_1 + 1) + \beta_2(x_2 - 1) + \beta_3(x_3 + 2) + ...+ \beta_px_p) \\ 
+&= exp(\beta_0 + \beta_1x_1 + \beta_1 + \beta_2x_2 - \beta_2  + \beta_3x_3 + 2\beta_3 + ...+ \beta_px_p) \\
+&=exp(0.7 + \beta_1 - \beta_2 + 2\beta_3) \\
+
+p(Y=1|X=x^*) &= \frac{exp(0.7 + \beta_1 - \beta_2 + 2\beta_3)}{1+exp(0.7 + \beta_1 - \beta_2 + 2\beta_3)}
+
+\end{align*}
+$$
+
+### Problem 7. In this problem, you will generate data with p = 2 features and a qualitative response with K = 3 classes, and n = 50 observations per class. You will then apply linear discriminant analysis to the data.
+
+#### a). Generate data such that the distribution of an observation in the kth class follows a N(μk,Σ) distribution, for k = 1,...,K. That is, the data follow a bivariate normal distribution with a mean vector μk that is specific to the kth class, and a covariance matrix Σ that is shared across the K classes. Choose Σ and μ1,...,μK such that there is some overlap between the K classes, i.e. no linear decision boundary is able to perfectly separate the training data. Specify your choices for Σ and μ1,...,μK .
+
+
+```{r}
+red <- data.frame(X1 = rnorm(50, -0.5, 1.1), X2 = rnorm(50, -0.5, 1.1)) %>%
+  mutate(color = "red")
+
+blue <- data.frame(X1 = rnorm(50, 1, 1.1), X2 = rnorm(50, 3, 1.1)) %>%
+  mutate(color = "blue")
+
+green <- data.frame(X1 = rnorm(50, 3, 1.1), X2 = rnorm(50, 0.5, 1.1)) %>%
+  mutate(color = "green")
+
+mu1 <- matrix(c(-0.5, -0.5))
+mu2 <- matrix(c(1, 3))
+mu3 <- matrix(c(3, 0.5))
+
+sigma <- matrix(c(1,1.2,1.2,1),2, byrow=TRUE)
+sigmainv <- matrix(c(-4.762, 5.238, 5.238, -4.762), 2, byrow = TRUE)
+sigmainv
+```
+
+  My choice of mu for red is -0.5 and -0.5.
+  My choice of mu for blue is 1 and 3.
+  My choice of mu for green is 3 and 0.5.
+  Sigma is (1, 1.1, 1.1, 1)
+
+#### b). Plot the data, with the observations in each class displayed in a different color. Compute and display the Bayes decision boundary (or Bayes decision boundaries) on this plot. Be sure to label which region(s) of the plot correspond to each class.
+
+$$
+x^TΣ^{−1}µ_k − 0.5µ_k^{T}Σ^{−1}µ_k = x^TΣ^{−1}µ_l − 0.5µ_l^{T}Σ^{−1}µ_l \\
+x^TΣ^{−1}µ_k - x^TΣ^{−1}µ_l = 0.5µ_k^{T}Σ^{−1}µ_k − 0.5µ_l^{T}Σ^{−1}µ_l \\ 
+\\
+k = 1, l = 2: \\
+x^T\begin{pmatrix}-4.762 & 5.238 \\ 5.238 & -4.762\end{pmatrix} \begin{pmatrix}-0.5 \\ -0.5\end{pmatrix} - x^T\begin{pmatrix}-4.762 & 5.238 \\ 5.238 & -4.762\end{pmatrix} \begin{pmatrix}1 \\ 3\end{pmatrix} = 0.5\begin{pmatrix}-0.5 & -0.5\end{pmatrix}\begin{pmatrix}-4.762 & 5.238 \\ 5.238 & -4.762\end{pmatrix} \begin{pmatrix}-0.5 \\ -0.5\end{pmatrix} - 0.5\begin{pmatrix}1 & 3\end{pmatrix}\begin{pmatrix}-4.762 & 5.238 \\ 5.238 & -4.762\end{pmatrix} \begin{pmatrix}1 \\ 3\end{pmatrix} \\
+x^T\begin{pmatrix}-0.238 \\ -0.238\end{pmatrix} - x^T\begin{pmatrix}10.952 \\ -9.048\end{pmatrix} = 8.215 \\
+-11.19x_1 + 8.81x_2 = 8.215 \\
+k = 1, l = 3 \\
+x^T\begin{pmatrix}-0.238 \\ -0.238\end{pmatrix} - x^T\begin{pmatrix}-11.667 \\ 13.333\end{pmatrix} = 14.28625 \\
+11.429x_1 - 13.095x_2 = 14.28625 \\
+k = 2, l = 3 \\
+x^T\begin{pmatrix}10.952 \\ -9.048\end{pmatrix}- x^T\begin{pmatrix}-11.667 \\ 13.333\end{pmatrix} = 6.07125 \\ 
+22.619x_1  -22.381x_2 = 6.07125
+$$
+
+```{r}
+# l = 2 k =1
+#(0.5*t(mu2)%*%sigmainv%*%mu2 - 0.5*t(mu3)%*%sigmainv%*%mu3) 
+#sigmainv%*%mu3
+```
+
+
+
+```{r}
+plot(red$X1, red$X2,  xlab="x1",ylab="x2", col=red$color ,xlim=c(-3,6), ylim=c(-3,5))
+points(blue$X1, blue$X2, col=blue$color)
+points(green$X1, green$X2, col=green$color)
+segments(-3, 1.824, -0.168, 1.056)
+segments(-0.168, 1.056, 5, 5.923)
+segments(-0.168, 1.056, 5, -4.58)
+#abline(b = 8.215/8.81, a = 11.19/8.81)
+#abline(b = -14.28025/13.095, a = 11.429/13.095)
+#abline(b = -6.07125/22.381 , a = 22.619/22.381)
+legend('topleft', legend="blue/blue class area",
+       col="blue",
+       pch = 1, bg="transparent")
+legend('bottomright', legend="green(class area)",
+       col="green",
+       pch = 1, bg="transparent")
+legend('bottomleft', legend="red/red class area",
+       col="red",
+       pch = 1, bg="transparent")
+```
+
+#### c). Fit a linear discriminant analysis model to the data, and make a plot that displays the observations as well as the decision boundary (or boundaries) corresponding to this fitted model. How does the LDA decision boundary (which can be viewed as an estimate of the Bayes decision boundary) compare to the Bayes decision boundary that you computed and plotted in (b)?
+
+
+```{r}
+train <- rbind(red, blue, green)
+frame_train <- data.frame(train)
+train_lda <- lda(color ~ ., data = frame_train)
+lda_pred = predict(train_lda, frame_train)
+grid <- seq(-10, 20,length = 1000)
+grid_2d <- expand.grid(X1=grid, X2=grid)
+grid_pred_lda <- as.numeric(predict(train_lda, newdata=grid_2d)$class)
+grid_pred_lda <- matrix(grid_pred_lda, ncol = 1000)
+contour(grid, grid, grid_pred_lda, 
+        xlim = c(-3, 5), ylim = c(-4,5),
+        drawlabels = F, lty = 1, col = "black")
+points(train[, 1], train[, 2], col = train$color)
+legend('topleft', legend="blue/blue class area",
+       col="blue",
+       pch = 1, bg="transparent")
+legend('bottomright', legend="green(class area)",
+       col="green",
+       pch = 1, bg="transparent")
+legend('bottomleft', legend="red/red class area",
+       col="red",
+       pch = 1, bg="transparent")
+
+```
+
+  The LDA prediction is better than bayes in my data set because it predict more points correcly.
+
+#### d). Report the K × K confusion matrix for the LDA model on the training data. The rows of this confusion matrix represent the predicted class labels, and the columns represent the true class labels. (See Table 4.4 in the textbook for an example of a confusion matrix.) Also, report the training error (i.e. the proportion of training observations that are misclassified).
+
+```{r}
+lda.fit <- lda(color ~ X1 + X2, data=train)
+lda.pred = predict(lda.fit, train)
+table(lda.pred$class, train$color)
+mean(lda.pred$class != train$color)
+```
+  The training error is 0.1133
+
+#### e). Generate n = 50 test observations in each of the K classes, using the bivariate normal distributions from (a). Report the K × K confusion matrix, as well as the test error, that results from applying the model fit to the training data in (c) to your test data.
+
+```{r}
+red_test <- data.frame(X1 = rnorm(50, -0.5, 1.1), X2 = rnorm(50, -0.5, 1.1)) %>%
+  mutate(color = "red")
+
+blue_test <- data.frame(X1 = rnorm(50, 1, 1.1), X2 = rnorm(50, 3, 1.1)) %>%
+  mutate(color = "blue")
+
+green_test <- data.frame(X1 = rnorm(50, 3, 1.1), X2 = rnorm(50, 0.5, 1.1)) %>%
+  mutate(color = "green")
+
+test <- rbind(red_test, blue_test, green_test)
+lda.pred = predict(lda.fit, test)
+table(lda.pred$class, test$color)
+mean(lda.pred$class != test$color)
+
+```
+
+  The test error is 0.1267
+
+#### f).Compare your results from (d) and (e), and comment on your findings.
+
+The training error is 0.1133 which is slightly lower than the test error 0.1267. The error is changing every time we rerun the prediction. This time it has best prediction on red which give 45 and 49 correct for train and test. But it change every time. The error is irreducible since all the data is random.
+
+
+### Problem 8. apply quadratic discriminant analysis to the data from Q7.
+
+#### a).Fit a quadratic discriminant analysis model to the training data from Q7, and make a plot that displays the observations as well as the QDA decision boundary (or boundaries) corresponding to this fitted model. Be sure to label which region(s) of the plot correspond to each class. How does the QDA decision boundary compare to the Bayes decision boundary that you computed in Q7(b)?
+
+```{r}
+frame_train <- data.frame(train)
+train_qda <- qda(color ~ ., data = frame_train)
+qda_pred = predict(train_qda, frame_train)
+grid <- seq(-10, 20,length = 1000)
+grid_2d <- expand.grid(X1=grid, X2=grid)
+grid_pred_qda <- as.numeric(predict(train_qda, newdata=grid_2d)$class)
+grid_pred_qda <- matrix(grid_pred_qda, ncol = 1000)
+contour(grid, grid, grid_pred_qda, 
+        xlim = c(-3, 5), ylim = c(-4,5),
+        drawlabels = F, lty = 1, col = "black")
+points(train[, 1], train[, 2], col = train$color)
+legend(-2,5.5, legend="blue/blue class area",
+       col="blue",
+       pch = 1, bg="transparent")
+legend('bottomright', legend="green(class area)",
+       col="green",
+       pch = 1, bg="transparent")
+legend('bottomleft', legend="red/red class area",
+       col="red",
+       pch = 1, bg="transparent")
+```
+
+  The QDA is better than the bayes especially at predicting the boundary between blue and green. 
+  
+```{r}
+qda.fit <- qda(color ~ X1 + X2, data=train)
+qda.fit
+```
+
+
+#### b). Report the K ×K confusion matrix for the QDA model on the training data, as well as the training error.
+
+```{r}
+qda.pred = predict(qda.fit, train)
+table(qda.pred$class, train$color)
+mean(qda.pred$class != train$color)
+```
+
+  The training error is 0.12
+
+#### c). this time using the test data generated in Q7. (That is, apply the model fit to the training data in (a) in order to calculate the test error.)
+
+
+```{r}
+qda.pred = predict(qda.fit, test)
+table(qda.pred$class, test$color)
+mean(qda.pred$class != test$color)
+```
+  The test error is 0.1267
+#### d). Compare your results in (b) and (c), and comment on your findings.
+
+The training error for qda is 0.1133 and the test error for qda is 0.1067 which is lower than the training. Both them have best prediction on blue and slightly bad on predicting green and red
+
+#### e). Which method had smaller training error in this example: LDA or QDA? Comment on your findings.
+
+LDA has a smaller training error with 0.12 in this case. But since every time we predict the data, the error is changing. Thus this relationship is not constant.
+
+#### f). Which method had smaller test error in this example: LDA or QDA? Comment on your findings.
+
+They have the same test error with 0.1267 in this case. Same as training error since every prediction will give different error rate, we may get a larger test error from either LDA  or QDA.
