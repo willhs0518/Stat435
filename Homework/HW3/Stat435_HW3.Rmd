@@ -1,0 +1,419 @@
+---
+title: "Stat435_HW3"
+author: "Su Huang"
+date: "5/3/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(boot)
+library(mosaic)
+```
+
+### Problem 1
+
+#### a). 
+
+```{r}
+set.seed(2)
+y <- rnorm(100)
+x <- matrix(rnorm(10000*100), ncol=10000)
+simulated_data = data.frame(x, y)
+lm_fit <- lm(y ~ x, data=simulated_data)
+```
+
+  Since they are both random sample, x and y are independent on each other. y = \epsilon ~  Norm(0,1). $\beta = 0$   and other coefficients = 0 as well.
+
+#### b). 
+
+  The $\epsilon = 1$ because the irreducible error is simple the variance of the function since 
+  y = norm(0, 1) where sd = 1. 
+  
+#### c). 
+  
+  i). Bias = $E[\hat{f(x)}]-f(x)$. Since $\hat{f(x)}=0$ and we have norm(0,1) for f(x), f(x) = 0
+  Thus, Bias = $E[0]-0 = 0$
+  
+  ii). variance = $Var(\hat{f(x)})=var(0)$. Since $\hat{f(x)}=0$ Thus, Variance = 0
+  
+  iii). The $EPE=Var(\epsilon)+Bias^2(\hat{f(x)})+Var(\hat{f(x)})=Var(\epsilon)=1$
+  
+  iv).
+  The performance on validation set is $CV_{vsa} = \frac{1}{nval} \sum_{i \in \text{val set}} (\hat{f_{train}(xi)}   - y_i)^2 =  \frac{1}{nval} \sum_{i \in \text{val set}} (y_i)^2 = E(f(x)^2) = Var(f(x)) + E(f(x))^2 = 1$
+```{r}
+set.seed(2)
+train <- sample(100, 50)
+
+train.Y <- y[train]
+val.Y <- y[-train]
+mean((0-val.Y)^2)
+```
+  The expect test error is 1.34
+  
+  v). The epe for random sample is very close to 1. 
+
+#### d). 
+```{r, warning = FALSE}
+set.seed(2)
+train <- sample(100, 50)
+train.X <- x[train, ]
+val.X <- x[-train, ]
+
+train.Y <- y[train]
+val.Y <- y[-train]
+lm_2 <- lm(train.Y ~ train.X)
+mean((predict(lm_2, data.frame(val.X)) - val.Y)^2)
+```
+  The estimate test error is 2.642419
+
+#### e).
+  The test error for d which is lslm is larger than c. The bias and variance for c) is all 0, while the model for   d likely to have non-zero bias and variance.
+
+### Problem 2
+
+#### a). 
+```{r}
+hist(cor(x[, c(1:10000)], y), xlab = "correlation", main = "Histogram of correlation")
+
+df <- tibble(index = c(1:10000) , correlation = abs(cor(x[, c(1:10000)], y)))
+```
+
+```{r}
+top10 <- top_n(df, 10, correlation)
+top10
+```
+
+#### b). 
+
+```{r, warning=FALSE}
+set.seed(2)
+train <- sample(100, 50)
+train.X <- x[train, ]
+val.X <- x[-train, ]
+
+train.Y <- y[train]
+val.Y <- y[-train]
+lm_3 <- lm(train.Y ~ train.X[, top10$index])
+mean((predict(lm_3, data.frame(val.X[, top10$index])) - val.Y)^2)
+```
+
+The estimate test error is 2.06412
+
+#### c). 
+```{r}
+set.seed(2)
+train <- sample(100, 50)
+train.X <- x[train, ]
+val.X <- x[-train, ]
+
+train.Y <- y[train]
+val.Y <- y[-train]
+df2 <- tibble(index = c(1:10000) , correlation = abs(cor(train.X[, c(1:10000)], train.Y)))
+
+top_10 <- top_n(df2, 10, correlation)
+
+lm_4 <- lm(train.Y ~ train.X[, top_10$index])
+mean((predict(lm_4, data.frame(val.X[, 1:10])) - val.Y)^2)
+```
+
+The estimate test error is 2.412336
+
+#### d).
+The estimate test error for option 2 is larger. The option 1 is useless because it find the correlation data before setting up the train and val data. The val data should only be used when we want to check the error for our model. The correlation data in option1 may be divided into val data after we calculate it which is a wrong approach. 
+
+### Problem 3
+
+#### a). 
+```{r}
+super <- read.csv("Superconductivty.csv")
+```
+
+  I get data from https://archive.ics.uci.edu/ml/datasets/Superconductivty+Data. It's about superconductivity. It   has 81 features extracted from 21263 superconductors along with the critical temperature(y) All the column        except the 82th are the predictors which are physics-related factors that may effect the critical temperature.
+  
+#### b).
+```{r}
+lm_5 <- lm(critical_temp ~ .-critical_temp, super)
+summary(lm_5)
+```
+  
+```{r, warning = FALSE}
+set.seed(2)
+train <- sample(21263, 10632)
+super_train<- super[train, ]
+super_val <- super[-train, ]
+
+lm_5 <- lm(critical_temp ~ .-critical_temp, super_train)
+mean((predict(lm_5, data.frame(super_val)) - super_val$critical_temp)^2)
+```
+
+  The estimate error is 309.761. The process is split the data into train and text by sample(21263, 10632). Then    fit the least squares linear model through lm for critical_temp with all other predictors. Finally, apply    
+  critical_temp which is y value in this data and lslm into the function of finding estimate test error through   
+  validation set approach.    
+
+#### c).
+```{r}
+library(glmnet)
+grid <- 10^seq(10, -2, length=100)
+ridge.mod <- glmnet(super_train[,1:81], super_train$critical_temp, alpha=0, lambda=grid)
+plot(ridge.mod, xvar="lambda")
+```
+
+#### d).
+```{r}
+set.seed(2)
+cv.out <- cv.glmnet(as.matrix(super_train[,1:81]), as.matrix(super_train$critical_temp), alpha=0)
+plot(cv.out)
+```
+```{r}
+best <- cv.out$lambda.min
+best
+min(cv.out$cvm)
+```
+
+  The best lambda is 2.455973. The estimate of test error is 358.0746. I use 10-fold cross validation with default     cv.glmnet to get the estimate test error.
+  
+#### e).
+```{r}
+lasso.mod <- glmnet(super_train[,1:81], super_train$critical_temp, alpha=1, lambda=grid)
+plot(lasso.mod, xvar="lambda")
+```
+
+
+#### f).
+```{r}
+set.seed(2)
+cv.out <-cv.glmnet(as.matrix(super_train[,1:81]), as.matrix(super_train$critical_temp), alpha=1)
+plot(cv.out)
+```
+
+```{r}
+best <- cv.out$lambda.min
+best
+min(cv.out$cvm)
+```
+
+  The best lambda is 0.003246651 with error 315.4107.
+
+```{r}
+coef(cv.out, s = best) # features used in the case
+```
+
+### Problem 4
+
+```{r}
+library(ISLR2)
+head(Auto)
+```
+
+#### a).
+
+```{r}
+set.seed(1)
+k <- 10
+train <- sample(392, 196)
+MSE_mat <- matrix(NA, k, 10)
+MSE <-rep(0, 10)
+attach(Auto)
+for (i in 1:10) {
+    lm.fit <- lm(mpg ~ poly(horsepower, i), data = Auto, subset = train)
+    MSE[i] = mean((mpg - predict(lm.fit, Auto))[-train]^2)
+    MSE_mat[1,i] = mean((mpg - predict(lm.fit, Auto))[-train]^2)
+}
+
+plot(1:10, MSE, type = "l", xlab = "Degree of Polynomial", ylim = c(16,27))
+
+for (j in 2:10) {
+  train <- sample(392, 196)
+  for (i in 1:10) {
+    lm.fit <- lm(mpg ~ poly(horsepower, i), data = Auto, subset = train)
+    MSE[i] =mean((mpg - predict(lm.fit, Auto))[-train]^2)
+    MSE_mat[j, i] = mean((mpg - predict(lm.fit, Auto))[-train]^2)
+  }
+  lines(1:10, MSE, col = j)
+}
+ave_mse <- round(apply(MSE_mat, 2, mean), 3)
+ave_mse
+which.min(ave_mse)
+```
+  
+  The degree polynomial of 7 is the best because it has the smallest MSE 19.433. The degree polynomial of 10 is     the worst since its MSE is 24.419 which is the largest one. When the degree is larger than 2, the decrease of     error is either negligible or start increasing. For two of them, the errors have large increase after 7 and 9.
+
+#### b).
+```{r}
+set.seed(1)
+cv.err <- rep(0, 10)
+for (i in 1:10) {
+    glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+    cv.err[i] <- cv.glm(Auto, glm.fit)$delta[1]
+}
+plot(1:10, cv.err, type = "b", xlab = "Degree of Polynomial", pch = 19, col = "blue")
+
+cv.err
+which.min(cv.err)
+```
+
+  The degree polynomial of 7 is the best because it has the smallest MSE 18.83305. The degree polynomial of 1       is the worst since its MSE is 24.23151 which is the largest one. The error doesn't have an obvious change after   degree of 2. 
+  
+  
+#### c). 
+```{r}
+set.seed(1)
+cv.err.10 <- rep(0, 10)
+cv.err.10.mat <- matrix(NA, 10, 10)
+for (i in 1:10) {
+    glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+    cv.err.10[i] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+    cv.err.10.mat[1, i] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+}
+plot(1:10, cv.err.10, type = "l", xlab = "Degree of Polynomial")
+
+for (j in 2:10) {
+  for (z in 1:10) {
+    glm.fit <- glm(mpg ~ poly(horsepower, z), data = Auto)
+    cv.err.10[z] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+    cv.err.10.mat[j, z] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+  }
+  lines(1:10, cv.err.10, col = j)
+}
+
+ave_cv.err.10.mat <- round(apply(cv.err.10.mat, 2, mean), 3)
+ave_cv.err.10.mat
+which.min(ave_cv.err.10.mat)
+```
+  
+  The degree polynomial of 7 is the best because it has the smallest MSE 18.833 The degree polynomial of 1 is the   worst since its MSE is 24.239 which is the largest one. Same idea as previous, error has negligible change after   degree of 2 and there are also obvious increases at 8 and 9.
+  
+  
+#### d).
+```{r}
+set.seed(1)
+TSMSE <- rep(0,10)
+for (i in 1:10) {
+    lm.fit2 <- lm(mpg ~ poly(horsepower, i), data = Auto)
+    TSMSE[i] = mean((mpg - predict(lm.fit2, Auto))^2)
+}
+
+plot(1:10, TSMSE, type = "b", col = 1)
+
+```
+
+When the degree increases, the MSE decreases, but still after degree of 2, the decreases is small. However when we have a too good model with a high degree, it will lead to the overfitting eventually. 
+
+#### e). 
+```{r, warning=FALSE}
+set.seed(1)
+TSMSE10 <- 0
+lm.fit3 <- lm(mpg ~ poly(horsepower, 10), data = Auto)
+pred <- predict(lm.fit3, data.frame(mpg))
+summary(pred)
+summary(lm.fit3)
+```
+
+The max prediction is 35.04, min is 11.15, median is 23.06. All the error from a-d are in this range. Based on our finding, the degree of 2 is relatively better since the all models have a turning point at 2. After this point, the decreases of the error becomes less important since it wont make a huge difference on error, while bringing potential overfit into the model.  
+
+### Problem 5
+
+#### a).
+
+$$
+\text{In order to find the min of the function, we have } \frac{\partial}{\partial \beta}\sum_{i=1}^{n}{(y_i-\beta x_i)^2} = 0 \\
+
+\begin{align}
+\frac{\partial}{\partial \beta}\sum_{i=1}^{n}{(y_i^2-2y_i\beta x_i + \beta^2 x_i^2)} &= 0 \\
+\sum_{i=1}^{n}{(-2y_i x_i + 2\beta x_i^2)} &= 0\\
+\sum_{i=1}^{n}{(-y_i x_i + \beta x_i^2)} &= 0 \\
+\beta =\frac{\sum x_iy_i}{\sum x_i^2}
+\end{align}
+$$
+
+#### b).
+
+$$
+\text{In order to find the min of the function, we have } \frac{\partial}{\partial \beta}\sum_{i=1}^{n}{(y_i-\beta x_i)^2} + \lambda \beta^2 = 0 \\
+
+\begin{align}
+\frac{\partial}{\partial \beta}\sum_{i=1}^{n}{(y_i^2-2y_i\beta x_i + \beta^2 x_i^2)} + \lambda \beta^2 &= 0\\
+\sum_{i=1}^{n}{(-2y_i x_i + 2\beta x_i^2)} + 2 \lambda \beta &= 0\\
+\sum_{i=1}^{n}{(-y_i x_i + \beta x_i^2)} + \lambda \beta &= 0 \\
+\sum_{i=1}^{n}{-y_i x_i}  + \beta \sum_{i=1}^{n}{ x_i^2} + \lambda \beta &= 0 \\
+\beta =\frac{\sum x_iy_i}{\sum x_i^2 + \lambda}
+\end{align}
+$$
+#### c). 
+
+$$
+\begin{align}
+\beta = 3\\
+E[\beta] &= E[\frac{\sum x_iy_i}{\sum x_i^2}]  \\
+&= E[\frac{\sum x_i(3x_i + \epsilon)}{\sum x_i^2}] \\
+&= E[\frac{\sum (3x_i^2+ x_i\epsilon)}{\sum x_i^2}] \\
+&= E[3 +\frac{\sum{x_i}\epsilon}{\sum x_i^2}] \\
+&= 3 + \frac{E[\sum{x_i}]E[\epsilon]}{E[\sum x_i^2]}\\ \\
+& \text{Since } \epsilon \text{ has mean zero }
+E[\beta] = \beta = 3 \text{ ,which means it's unbiased in this case}
+
+\end{align}
+$$
+
+#### d).
+
+$$
+\begin{align}
+\beta = 3\\
+E[\beta] &= E[\frac{\sum x_iy_i}{\sum x_i^2 + \lambda}]  \\
+&= E[\frac{\sum x_i(3x_i + \epsilon)}{\sum x_i^2 + \lambda}] \\
+&= E[\frac{\sum (3x_i^2+ x_i\epsilon)}{\sum x_i^2 + \lambda}] \\
+& \text{Since } \epsilon \text{ has mean zero }
+E[\beta] = 3E[\frac{\sum (x_i^2)}{\sum x_i^2 + \lambda}] \neq \beta \text{ ,which means it's biased in this case.} \\
+& \text{The expectation change since we can't elimiate the xi from the fraction with the } \lambda \\
+& \text{on the denomiator when it not 0. However when it decreases towards a small number} \\
+&\text{the expectation will toward to large expectation.}
+\end{align}
+$$
+#### e). 
+
+$$
+\begin{align}
+\beta = 3,  cov(x_i, y_i) = 0 \text{ for }  i \neq i'\\
+Var[\beta] &= Var[\frac{\sum x_iy_i}{\sum x_i^2}]  \\
+&= Var[\frac{\sum x_i(3x_i + \epsilon)}{\sum x_i^2}] \\
+&= Var[\frac{(\sum 3x_i^2 +x_i\epsilon)}{\sum x_i^2}] \\
+&= Var[3 + \frac{\epsilon\sum x_i}{\sum x_i^2}] \\
+&= Var[\frac{\epsilon\sum x_i}{\sum x_i^2}] \\
+&= (\frac{1}{\sum x_i^2})^2*(\sum x_i^2) Var(\epsilon) \\
+&= \frac{\sigma^2}{\sum x_i^2}
+\end{align}
+$$
+
+#### f).
+
+$$
+\begin{align}
+\beta = 3,  cov(x_i, y_i) = 0 \text{ for }  i \neq i'\\
+
+Var[\beta] &= Var[\frac{\sum x_iy_i}{\sum x_i^2 + \lambda}]  \\
+&= Var[\frac{\sum x_i(3x_i + \epsilon)}{\sum x_i^2 + \lambda}] \\
+&= Var[\frac{(\sum 3x_i^2 +x_i\epsilon)}{\sum x_i^2 + \lambda}] \\
+&= (\frac{1}{\sum x_i^2 + \lambda})^2*Var[x_i\epsilon] \\
+&= (\frac{1}{\sum x_i^2 + \lambda})^2*Var[\sum x_i\epsilon] \\
+&= \frac{\sigma^2}{(\sum x_i^2 + \lambda)^2}\sum x_i^2 \\
+\text{For the variance, we can see that increasing } & \lambda \text{ reduces variance.}
+\end{align}
+$$
+
+#### g).
+
+$$
+\begin{align}
+Bias[\beta] &= (E[\beta]-\beta)^2  \\
+&= (\frac{\beta\sum (x_i^2)}{\sum x_i^2 + \lambda}-\beta)^2 \\
+&= \beta^2(\frac{\lambda}{\sum x_i^2 + \lambda})^2
+\end{align}
+$$
+
+  Thus a larger penalty in ridge-regression reduces the variance and increases the bias value which observe a trade-off.
+
+
